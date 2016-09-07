@@ -26,6 +26,9 @@ the details of the connected device. take note of the idVendor and idProduct num
 the instructions for driver installation in https://sourceforge.net/p/libusb-win32/wiki/Home/
 """
 
+"""
+establishing communication of PC and Power supply
+"""
 #device set configuration
 dev = usb.core.find(idVendor = 0x0699, idProduct =0x0392)
 
@@ -33,14 +36,19 @@ dev = usb.core.find(idVendor = 0x0699, idProduct =0x0392)
 if dev is None:
     raise ValueError('Device not found')
 
-#dev.set_configuration()
+dev.set_configuration()
 #usb.util.claim_interface(dev, interface)
 
 #Connect Tektronix PW4305 DC power supply
 instr = usbtmc.Instrument("USB::0x0699::0x0392::C011164::INSTR")
-print(instr.ask("*IDN?"))
 
+#enable remote control
+instr.write("SYSTEM:REMOTE")
 
+"""
+initializing serial communication for piezo readout and PC
+
+"""
 
 # # open serial port 9600 baud
 # ser = serial.Serial(PORT,BAUDRATE)
