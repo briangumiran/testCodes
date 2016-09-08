@@ -2,6 +2,20 @@ import serial
 import usbtmc
 import usb.core
 import usb.util
+import time
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import sys
+
+#Parameters
+VMAX = 20;
+VMIN = 4; #minimum voltage to produce data, otherwise will put the test in inf loop
+NTERVAL = 0.2;
+
+PORT = "COM4";
+BAUDRATE = 9600;
+TIMEOUT = 10;
 
 """
 To connect to the powersuppply, 
@@ -24,6 +38,10 @@ the details of the connected device. take note of the idVendor and idProduct num
 
 3. The Actual device driver is installed automatically (plug and play), if not, consult
 the instructions for driver installation in https://sourceforge.net/p/libusb-win32/wiki/Home/
+
+* to determine if the device driver is installed manually:
+"Run the test program (testlibusb-win.exe) from the system's start menu. This program will verify the correct installation 
+and print the descriptors of the USB devices accessible by the library."
 """
 
 """
@@ -42,17 +60,53 @@ dev.set_configuration()
 #Connect Tektronix PW4305 DC power supply
 instr = usbtmc.Instrument("USB::0x0699::0x0392::C011164::INSTR")
 
+"""
+For control of the Tektronix PWS4305, the command syntax is explained in:
+http://research.physics.illinois.edu/bezryadin/labprotocol/PWS4205Manual.pdf
+"""
 #enable remote control
 instr.write("SYSTEM:REMOTE")
-
+print "enable remote control"
 """
-initializing serial communication for piezo readout and PC
+# config serial port 9600 baud
+ser = serial.Serial()
+ser.baudrate = BAUDRATE
+ser.port = PORT
+ser.timeout = TIMEOUT
 
+#open serial
+if (ser.is_open is not True):
+		ser.open()
+		print "SERIAL OPEN"
+
+#start voltage sweep
+for step in np.arange(VMIN,VMAX+NTERVAL,NTERVAL):
+		
+	#turn on voltage to activate piezo sensor
+	instr.write("VOLTAGE "+str(step)+"V")
+	instr.write("OUTPUT ON")
+	
+	#read data from serial, store in csv
+	print float(ser.readline())
+	print float(ser.readline())
+	instr.write("OUTPUT OFF")
+	
+print "SERIAL CLOSED"
 """
+data1 = [{'PIEZOID': 1, 'VOLTAGE': 12, 'FREQUENCY': 2954.23, 'TEMP': 29.54, 'CURRENT' : 24}]
+para = ['PIEZOID', 'VOLTAGE', 'FREQUENCY', 'TEMP', 'CURRENT']
+df = pd.DataFrame(data1, columns = para ) 
 
-# # open serial port 9600 baud
-# ser = serial.Serial(PORT,BAUDRATE)
+print df
 
-# vin = raw_input("Set source voltage:")
-# PORT = 'COM4'
-# BAUDRATE = 9600
+
+	
+	
+	
+	
+
+
+
+
+
+
