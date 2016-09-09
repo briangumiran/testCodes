@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import os.path
 
 #Parameters
 VMAX = 20;
@@ -16,6 +17,7 @@ NTERVAL = 0.2;
 PORT = "COM4";
 BAUDRATE = 9600;
 TIMEOUT = 10;
+PID = 25;
 
 """
 To connect to the powersuppply, 
@@ -47,6 +49,7 @@ and print the descriptors of the USB devices accessible by the library."
 """
 establishing communication of PC and Power supply
 """
+
 #device set configuration
 dev = usb.core.find(idVendor = 0x0699, idProduct =0x0392)
 
@@ -64,10 +67,12 @@ instr = usbtmc.Instrument("USB::0x0699::0x0392::C011164::INSTR")
 For control of the Tektronix PWS4305, the command syntax is explained in:
 http://research.physics.illinois.edu/bezryadin/labprotocol/PWS4205Manual.pdf
 """
+
+
 #enable remote control
 instr.write("SYSTEM:REMOTE")
 print "enable remote control"
-"""
+
 # config serial port 9600 baud
 ser = serial.Serial()
 ser.baudrate = BAUDRATE
@@ -79,6 +84,15 @@ if (ser.is_open is not True):
 		ser.open()
 		print "SERIAL OPEN"
 
+#order of parameters
+para = ['PIEZOID', 'VOLTAGE', 'FREQUENCY', 'TEMP', 'CURRENT']
+
+#create empty DataFrame
+if(os.path.exists('piezotest.csv')):
+	maindf = pd.read_csv('piezotest.csv',index_col = False)
+else:
+	maindf = pd.DataFrame(columns = para)
+
 #start voltage sweep
 for step in np.arange(VMIN,VMAX+NTERVAL,NTERVAL):
 		
@@ -86,19 +100,24 @@ for step in np.arange(VMIN,VMAX+NTERVAL,NTERVAL):
 	instr.write("VOLTAGE "+str(step)+"V")
 	instr.write("OUTPUT ON")
 	
-	#read data from serial, store in csv
-	print float(ser.readline())
-	print float(ser.readline())
+	#get test data, store in dict entry
+	testdata = [{
+		'PIEZOID': PID, 
+		'VOLTAGE': float(instr.ask("MEASURE:VOLTAGE?")), 
+		'FREQUENCY': float(ser.readline()), 
+		'TEMP': float(ser.readline()), 
+		'CURRENT' : float(instr.ask("MEASURE:CURRENT?"))
+	}]
+	print testdata[0].values()
+	tempdf = pd.DataFrame(testdata,columns = para)
+	maindf = maindf.append(tempdf, ignore_index = True)
 	instr.write("OUTPUT OFF")
 	
 print "SERIAL CLOSED"
-"""
-data1 = [{'PIEZOID': 1, 'VOLTAGE': 12, 'FREQUENCY': 2954.23, 'TEMP': 29.54, 'CURRENT' : 24}]
-para = ['PIEZOID', 'VOLTAGE', 'FREQUENCY', 'TEMP', 'CURRENT']
-df = pd.DataFrame(data1, columns = para ) 
+print maindf
 
-print df
 
+maindf.to_csv('piezotest.csv', index = False)
 
 	
 	
